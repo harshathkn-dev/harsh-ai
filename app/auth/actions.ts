@@ -1,6 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
@@ -10,7 +9,10 @@ function value(formData: FormData, key: string): string {
 }
 
 function safeNextPath(candidate: string): string {
-  return candidate.startsWith("/") && !candidate.startsWith("//")
+  return candidate.startsWith("/") &&
+    !candidate.startsWith("//") &&
+    !candidate.includes("\\") &&
+    !/[\u0000-\u001f\u007f]/.test(candidate)
     ? candidate
     : "/dashboard";
 }
@@ -20,16 +22,20 @@ async function applicationOrigin(): Promise<string> {
     return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
   }
 
-  const requestHeaders = await headers();
-  const host =
-    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? "http";
+  const vercelHost =
+    process.env.VERCEL_URL ?? process.env.VERCEL_PROJECT_PRODUCTION_URL;
 
-  if (!host) {
-    throw new Error("Unable to determine the application URL.");
+  if (vercelHost) {
+    return `https://${vercelHost.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
   }
 
-  return `${protocol}://${host}`;
+  if (process.env.NODE_ENV === "development") {
+    return "http://localhost:3000";
+  }
+
+  throw new Error(
+    "NEXT_PUBLIC_APP_URL must be configured for authentication redirects.",
+  );
 }
 
 function authRedirect(

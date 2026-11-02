@@ -10,6 +10,10 @@ with Next.js, TypeScript, Supabase, and Tailwind CSS.
 - Google OAuth entry point
 - Cookie-based Supabase SSR authentication
 - Protected dashboard routes
+- Responsive dashboard with live Supabase overview data
+- Session creation, lifecycle controls, deletion, and history views
+- Interview, meeting, and general session types
+- Real document, AI usage, and account overview pages
 - PostgreSQL schema with Row Level Security
 - Private document, resume, and session attachment storage
 - Secure document upload, signed download, and deletion APIs
@@ -40,10 +44,11 @@ anonymous and service-role aliases are retained only for compatibility.
 
 1. Open the Supabase SQL Editor.
 2. Run `supabase/migrations/202611020001_initial_schema.sql`.
-3. Under Authentication URL Configuration, set:
+3. Run `supabase/migrations/202611020002_session_types.sql`.
+4. Under Authentication URL Configuration, set:
    - Site URL: `http://localhost:3000`
    - Redirect URL: `http://localhost:3000/auth/callback`
-4. Add the deployed Vercel callback URL after deployment.
+5. Add the deployed Vercel callback URL after deployment.
 
 The migration creates private buckets named:
 
