@@ -32,7 +32,11 @@ async function applicationOrigin(): Promise<string> {
   return `${protocol}://${host}`;
 }
 
-function authRedirect(path: string, type: "error" | "message", text: string) {
+function authRedirect(
+  path: string,
+  type: "error" | "message",
+  text: string,
+): never {
   redirect(`${path}?${type}=${encodeURIComponent(text)}`);
 }
 
