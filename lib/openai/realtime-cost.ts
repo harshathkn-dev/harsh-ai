@@ -25,6 +25,25 @@ export function calculateRealtimeCost(usage: RealtimeUsage) {
     };
   }
 
+  const {
+    textInput: textInputRate,
+    textOutput: textOutputRate,
+    audioInput: audioInputRate,
+    audioOutput: audioOutputRate,
+  } = pricing;
+
+  if (
+    textInputRate === null ||
+    textOutputRate === null ||
+    audioInputRate === null ||
+    audioOutputRate === null
+  ) {
+    return {
+      estimatedCostUsd: 0,
+      costStatus: "pending_pricing_configuration" as const,
+    };
+  }
+
   const audioInput = usage.input_token_details?.audio_tokens ?? 0;
   const audioOutput = usage.output_token_details?.audio_tokens ?? 0;
   const textInput =
@@ -35,10 +54,10 @@ export function calculateRealtimeCost(usage: RealtimeUsage) {
     Math.max(0, usage.output_tokens - audioOutput);
 
   const estimatedCostUsd =
-    (textInput * pricing.textInput +
-      textOutput * pricing.textOutput +
-      audioInput * pricing.audioInput +
-      audioOutput * pricing.audioOutput) /
+    (textInput * textInputRate +
+      textOutput * textOutputRate +
+      audioInput * audioInputRate +
+      audioOutput * audioOutputRate) /
     1_000_000;
 
   return {
