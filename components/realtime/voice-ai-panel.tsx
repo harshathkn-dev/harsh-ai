@@ -369,14 +369,35 @@ export function VoiceAiPanel({
 
       if (!startResponse?.ok) {
         const startBody = await startResponse?.json().catch(() => null);
-        closeMedia();
-        setState("error");
-        setError(
-          typeof startBody?.error === "string"
-            ? `Could not start session: ${startBody.error}`
-            : `Could not start session (HTTP ${startResponse?.status ?? "network error"}).`,
-        );
-        return;
+
+        // A prior attempt (or the main Start session control) may already
+        // have moved this session to active. Verify current state before
+        // treating the conflict as a hard failure.
+        if (startResponse?.status === 409) {
+          const currentResponse = await fetch(`/api/sessions/${sessionId}`).catch(() => null);
+          const currentBody = await currentResponse?.json().catch(() => null);
+          if (currentResponse?.ok && currentBody?.session?.status === "active") {
+            // The session is already active; continue to create the Realtime connection.
+          } else {
+            closeMedia();
+            setState("error");
+            setError(
+              typeof startBody?.error === "string"
+                ? `Could not start session: ${startBody.error}`
+                : "The session is not in a startable state. Refresh and try again.",
+            );
+            return;
+          }
+        } else {
+          closeMedia();
+          setState("error");
+          setError(
+            typeof startBody?.error === "string"
+              ? `Could not start session: ${startBody.error}`
+              : `Could not start session (HTTP ${startResponse?.status ?? "network error"}).`,
+          );
+          return;
+        }
       }
     }
 
