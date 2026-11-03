@@ -96,26 +96,47 @@ export async function POST(request: Request) {
   }
 
   const isTranscription = parsed.data.usageKind === "transcription";
-  const isDurationUsage = "seconds" in parsed.data.usage;
-  if (isDurationUsage && !isTranscription) {
+  const usage = parsed.data.usage;
+  if (usage.type === "duration" && !isTranscription) {
     return jsonError(
       400,
       "INVALID_USAGE",
       "Duration usage is only valid for transcription.",
     );
   }
-  const cost = isTranscription || isDurationUsage
-    ? {
-        estimatedCostUsd: 0,
-        costStatus: "pending_transcription_pricing" as const,
-      }
-    : calculateRealtimeCost(parsed.data.usage);
-  const inputAudioTokens = isDurationUsage
-    ? 0
-    : (parsed.data.usage.input_token_details?.audio_tokens ?? 0);
-  const outputAudioTokens = isDurationUsage
-    ? 0
-    : (parsed.data.usage.output_token_details?.audio_tokens ?? 0);
+
+  const pendingTranscriptionCost: {
+    estimatedCostUsd: number;
+    costStatus: "pending_transcription_pricing";
+  } = {
+    estimatedCostUsd: 0,
+    costStatus: "pending_transcription_pricing",
+  };
+  const usageValues =
+    usage.type === "duration"
+      ? {
+          inputTokens: 0,
+          outputTokens: 0,
+          audioSeconds: usage.seconds,
+          inputAudioTokens: 0,
+          outputAudioTokens: 0,
+          inputTokenDetails: {},
+          outputTokenDetails: {},
+          cost: pendingTranscriptionCost,
+        }
+      : {
+          inputTokens: usage.input_tokens,
+          outputTokens: usage.output_tokens,
+          audioSeconds: 0,
+          inputAudioTokens: usage.input_token_details?.audio_tokens ?? 0,
+          outputAudioTokens: usage.output_token_details?.audio_tokens ?? 0,
+          inputTokenDetails: usage.input_token_details ?? {},
+          outputTokenDetails: usage.output_token_details ?? {},
+          cost: isTranscription
+            ? pendingTranscriptionCost
+            : calculateRealtimeCost(usage),
+        };
+
   const { error } = await admin.from("usage_events").upsert(
     {
       user_id: auth.userId,
@@ -128,25 +149,21 @@ export async function POST(request: Request) {
         ? process.env.OPENAI_REALTIME_TRANSCRIPTION_MODEL ||
           "gpt-4o-mini-transcribe"
         : connection.model,
-      input_tokens: isDurationUsage ? 0 : parsed.data.usage.input_tokens,
-      output_tokens: isDurationUsage ? 0 : parsed.data.usage.output_tokens,
-      audio_seconds: isDurationUsage ? parsed.data.usage.seconds : 0,
-      estimated_cost_usd: cost.estimatedCostUsd,
+      input_tokens: usageValues.inputTokens,
+      output_tokens: usageValues.outputTokens,
+      audio_seconds: usageValues.audioSeconds,
+      estimated_cost_usd: usageValues.cost.estimatedCostUsd,
       request_id: parsed.data.responseId,
       metadata: {
         source: isTranscription
           ? "openai_realtime_transcription_completed"
           : "openai_realtime_response_done",
         connection_id: connection.id,
-        cost_status: cost.costStatus,
-        input_audio_tokens: inputAudioTokens,
-        output_audio_tokens: outputAudioTokens,
-        input_token_details: isDurationUsage
-          ? {}
-          : (parsed.data.usage.input_token_details ?? {}),
-        output_token_details: isDurationUsage
-          ? {}
-          : (parsed.data.usage.output_token_details ?? {}),
+        cost_status: usageValues.cost.costStatus,
+        input_audio_tokens: usageValues.inputAudioTokens,
+        output_audio_tokens: usageValues.outputAudioTokens,
+        input_token_details: usageValues.inputTokenDetails,
+        output_token_details: usageValues.outputTokenDetails,
       },
     },
     { onConflict: "user_id,provider,request_id" },
@@ -167,6 +184,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     saved: true,
-    costStatus: cost.costStatus,
+    costStatus: usageValues.cost.costStatus,
   });
 }
