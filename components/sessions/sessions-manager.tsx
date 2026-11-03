@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { EmptyState, StatusBadge } from "@/components/dashboard/ui";
 import { Toast } from "@/components/ui/toast";
+import { SessionCreateWizard } from "@/components/sessions/session-create-wizard";
 import type { SessionSummary, SessionType } from "@/lib/sessions/types";
 
 type SessionsManagerProps = {
@@ -114,19 +115,14 @@ export function SessionsManager({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  async function createSession(formData: FormData) {
+  async function createSession(data: { title: string; sessionType: SessionType; metadata: Record<string, unknown> }) {
     setCreating(true);
     setError(null);
 
     const response = await fetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: String(formData.get("title") ?? ""),
-        sessionType: String(
-          formData.get("sessionType") ?? "general",
-        ) as SessionType,
-      }),
+      body: JSON.stringify(data),
     });
 
     if (!response.ok) {
@@ -217,51 +213,7 @@ export function SessionsManager({
       ) : null}
 
       {showCreate ? (
-        <section className="card rounded-2xl p-5 sm:p-6">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold">Create a session</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Choose a clear name and the kind of call you are preparing for.
-              </p>
-            </div>
-            <button
-              className="text-sm font-semibold text-slate-400"
-              onClick={() => setShowCreate(false)}
-              type="button"
-            >
-              Cancel
-            </button>
-          </div>
-
-          <form action={createSession} className="mt-5 grid gap-4 sm:grid-cols-[1fr_180px_auto]">
-            <label className="text-sm font-semibold">
-              Session name
-              <input
-                className="field mt-2"
-                maxLength={120}
-                name="title"
-                placeholder="Senior engineer interview"
-                required
-              />
-            </label>
-            <label className="text-sm font-semibold">
-              Type
-              <select className="field mt-2" name="sessionType">
-                <option value="interview">Interview</option>
-                <option value="meeting">Meeting</option>
-                <option value="general">General</option>
-              </select>
-            </label>
-            <button
-              className="button self-end"
-              disabled={creating}
-              type="submit"
-            >
-              {creating ? "Creating…" : "Create"}
-            </button>
-          </form>
-        </section>
+        <SessionCreateWizard busy={creating} onClose={() => setShowCreate(false)} onCreate={createSession} />
       ) : (
         <button className="button" onClick={() => setShowCreate(true)} type="button">
           Create session

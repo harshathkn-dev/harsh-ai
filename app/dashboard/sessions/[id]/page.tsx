@@ -7,6 +7,7 @@ import {
   StatusBadge,
 } from "@/components/dashboard/ui";
 import { VoiceAiPanel } from "@/components/realtime/voice-ai-panel";
+import { AnswerAssistant } from "@/components/sessions/answer-assistant";
 import { SessionControls } from "@/components/sessions/session-controls";
 import { requireAuthenticatedUser } from "@/lib/auth/user";
 import { isRealtimeVoice } from "@/lib/realtime/types";
@@ -139,6 +140,10 @@ export default async function SessionDetailPage({
           </p>
         </article>
       </section>
+
+      {session.status === "draft" || session.status === "active" ? (
+        <AnswerAssistant sessionTitle={session.title} />
+      ) : null}
 
       {session.status === "draft" || session.status === "active" ? (
         <VoiceAiPanel
