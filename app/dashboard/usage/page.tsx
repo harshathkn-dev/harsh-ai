@@ -1,6 +1,12 @@
 import { EmptyState, MetricCard, PageHeader } from "@/components/dashboard/ui";
 import { requireAuthenticatedUser } from "@/lib/auth/user";
 
+function metadataValue(metadata: unknown, key: string) {
+  return metadata && typeof metadata === "object"
+    ? Reflect.get(metadata, key)
+    : undefined;
+}
+
 export default async function UsagePage() {
   const { supabase } = await requireAuthenticatedUser();
   const monthStart = new Date();
@@ -10,7 +16,7 @@ export default async function UsagePage() {
   const { data: events, error } = await supabase
     .from("usage_events")
     .select(
-      "id, feature, model, input_tokens, output_tokens, audio_seconds, estimated_cost_usd, created_at",
+      "id, feature, model, input_tokens, output_tokens, audio_seconds, estimated_cost_usd, metadata, created_at",
     )
     .gte("created_at", monthStart.toISOString())
     .order("created_at", { ascending: false });
@@ -21,8 +27,25 @@ export default async function UsagePage() {
       output: sum.output + Number(event.output_tokens),
       audio: sum.audio + Number(event.audio_seconds),
       cost: sum.cost + Number(event.estimated_cost_usd),
+      realtimeDuration:
+        sum.realtimeDuration +
+        Number(metadataValue(event.metadata, "session_duration_seconds") ?? 0),
+      pendingCosts:
+        sum.pendingCosts +
+        (String(metadataValue(event.metadata, "cost_status") ?? "").startsWith(
+          "pending",
+        )
+          ? 1
+          : 0),
     }),
-    { input: 0, output: 0, audio: 0, cost: 0 },
+    {
+      input: 0,
+      output: 0,
+      audio: 0,
+      cost: 0,
+      realtimeDuration: 0,
+      pendingCosts: 0,
+    },
   );
 
   return (
@@ -50,7 +73,7 @@ export default async function UsagePage() {
           value={totals.output.toLocaleString()}
         />
         <MetricCard
-          detail={`${(totals.audio / 60).toFixed(2)} transcription minutes`}
+          detail={`${(totals.realtimeDuration / 60).toFixed(2)} Realtime minutes · ${totals.pendingCosts} costs pending`}
           label="Estimated cost"
           value={`$${totals.cost.toFixed(4)}`}
         />
@@ -84,7 +107,12 @@ export default async function UsagePage() {
                         Number(event.input_tokens) +
                         Number(event.output_tokens)
                       ).toLocaleString()}{" "}
-                      tokens · ${Number(event.estimated_cost_usd).toFixed(6)}
+                      tokens ·{" "}
+                      {String(
+                        metadataValue(event.metadata, "cost_status") ?? "",
+                      ).startsWith("pending")
+                        ? "Cost pending"
+                        : `$${Number(event.estimated_cost_usd).toFixed(6)}`}
                     </p>
                     <p className="mt-1 text-xs">
                       {new Intl.DateTimeFormat("en-IN", {

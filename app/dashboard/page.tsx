@@ -16,6 +16,14 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function costIsPending(metadata: unknown) {
+  return (
+    metadata !== null &&
+    typeof metadata === "object" &&
+    String(Reflect.get(metadata, "cost_status") ?? "").startsWith("pending")
+  );
+}
+
 export default async function DashboardPage() {
   const { supabase } = await requireAuthenticatedUser();
   const monthStart = new Date();
@@ -49,7 +57,7 @@ export default async function DashboardPage() {
     supabase
       .from("usage_events")
       .select(
-        "input_tokens, output_tokens, audio_seconds, estimated_cost_usd",
+        "input_tokens, output_tokens, audio_seconds, estimated_cost_usd, metadata",
       )
       .gte("created_at", monthStart.toISOString()),
   ]);
@@ -69,8 +77,9 @@ export default async function DashboardPage() {
         Number(event.input_tokens) +
         Number(event.output_tokens),
       cost: total.cost + Number(event.estimated_cost_usd),
+      pending: total.pending + (costIsPending(event.metadata) ? 1 : 0),
     }),
-    { tokens: 0, cost: 0 },
+    { tokens: 0, cost: 0, pending: 0 },
   );
 
   return (
@@ -109,9 +118,13 @@ export default async function DashboardPage() {
           value={documentsResult.count ?? 0}
         />
         <MetricCard
-          detail={`${usage.tokens.toLocaleString()} tokens this month`}
+          detail={`${usage.tokens.toLocaleString()} tokens this month${usage.pending ? ` · ${usage.pending} costs pending` : ""}`}
           label="Estimated AI cost"
-          value={`$${usage.cost.toFixed(4)}`}
+          value={
+            usage.pending && usage.cost === 0
+              ? "Pending"
+              : `$${usage.cost.toFixed(4)}`
+          }
         />
       </section>
 

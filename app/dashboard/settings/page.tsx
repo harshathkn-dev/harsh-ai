@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import { PageHeader } from "@/components/dashboard/ui";
+import { RealtimeVoiceSettings } from "@/components/settings/realtime-voice-settings";
 import { requireAuthenticatedUser } from "@/lib/auth/user";
+import { isRealtimeVoice } from "@/lib/realtime/types";
 
 export default async function SettingsPage() {
   const { supabase, userId, email } = await requireAuthenticatedUser();
@@ -15,7 +17,7 @@ export default async function SettingsPage() {
       supabase
         .from("user_settings")
         .select(
-          "timezone, email_notifications, session_completion_email, preferred_answer_mode",
+          "timezone, email_notifications, session_completion_email, preferred_answer_mode, ai_preferences",
         )
         .eq("user_id", userId)
         .maybeSingle(),
@@ -25,6 +27,16 @@ export default async function SettingsPage() {
         .eq("user_id", userId)
         .maybeSingle(),
     ]);
+  const preferences = settings?.ai_preferences;
+  const voiceCandidate =
+    preferences &&
+    typeof preferences === "object" &&
+    "realtime_voice" in preferences
+      ? preferences.realtime_voice
+      : null;
+  const realtimeVoice = isRealtimeVoice(voiceCandidate)
+    ? voiceCandidate
+    : "marin";
 
   return (
     <>
@@ -85,6 +97,15 @@ export default async function SettingsPage() {
               </dd>
             </div>
           </dl>
+        </section>
+
+        <section className="card rounded-2xl p-6 xl:col-span-2">
+          <h2 className="text-lg font-bold">Realtime Voice AI</h2>
+          <p className="mb-5 mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+            Choose the voice used for new speech-to-speech WebRTC connections.
+            API keys and provider secrets are never shown here.
+          </p>
+          <RealtimeVoiceSettings initialVoice={realtimeVoice} />
         </section>
 
         <section className="card rounded-2xl p-6 xl:col-span-2">

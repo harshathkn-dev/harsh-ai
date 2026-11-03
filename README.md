@@ -14,6 +14,9 @@ with Next.js, TypeScript, Supabase, and Tailwind CSS.
 - Session creation, lifecycle controls, deletion, and history views
 - Interview, meeting, and general session types
 - Real document, AI usage, and account overview pages
+- OpenAI Realtime speech-to-speech conversations over WebRTC
+- Live user and assistant transcripts with idempotent Supabase persistence
+- Microphone mute, AI interruption, volume, connection state, and waveform controls
 - PostgreSQL schema with Row Level Security
 - Private document, resume, and session attachment storage
 - Secure document upload, signed download, and deletion APIs
@@ -21,8 +24,8 @@ with Next.js, TypeScript, Supabase, and Tailwind CSS.
 - Usage and estimated-cost database records
 - Secure, one-time administrator bootstrap procedure
 
-OpenAI, Resend, integration health checks, and final deployment configuration
-are implemented in later project stages.
+Document AI processing, Resend, and final integration health checks are
+implemented in later project stages.
 
 ## Environment variables
 
@@ -45,10 +48,11 @@ anonymous and service-role aliases are retained only for compatibility.
 1. Open the Supabase SQL Editor.
 2. Run `supabase/migrations/202611020001_initial_schema.sql`.
 3. Run `supabase/migrations/202611020002_session_types.sql`.
-4. Under Authentication URL Configuration, set:
+4. Run `supabase/migrations/202611030001_realtime_voice.sql`.
+5. Under Authentication URL Configuration, set:
    - Site URL: `http://localhost:3000`
    - Redirect URL: `http://localhost:3000/auth/callback`
-5. Add the deployed Vercel callback URL after deployment.
+6. Add the deployed Vercel callback URL after deployment.
 
 The migration creates private buckets named:
 
@@ -86,6 +90,39 @@ https://gyvnpszmmcfijjjtwkok.supabase.co/auth/v1/callback
 Enter the Google client ID and client secret directly in Supabase under
 Authentication Providers. Do not place the Google client secret in frontend
 code or commit it to Git.
+
+## Realtime Voice AI
+
+Realtime Voice AI uses OpenAI's GA WebRTC interface. The browser sends
+microphone audio directly to OpenAI using a short-lived client secret minted by
+an authenticated server route. The permanent API key never reaches browser
+JavaScript, and raw microphone audio is not stored.
+
+Required Vercel environment variable:
+
+```dotenv
+OPENAI_API_KEY=
+```
+
+Optional configuration:
+
+```dotenv
+OPENAI_REALTIME_MODEL=gpt-realtime-2.1
+OPENAI_REALTIME_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
+OPENAI_REALTIME_DEFAULT_VOICE=marin
+OPENAI_MONTHLY_BUDGET_USD=5
+```
+
+Realtime token prices are not returned as invoice amounts by the API. To
+display application-level cost estimates, configure the four optional
+per-million-token pricing variables documented in `.env.example`. When those
+rates are absent, the application records actual token usage but explicitly
+shows cost as pending instead of inventing a price. Provider invoices remain
+authoritative.
+
+Voice conversations require HTTPS outside localhost and a current Chrome or
+Edge browser with microphone permission. Start the database session before
+selecting **Start Voice AI**.
 
 ## Optional local development
 

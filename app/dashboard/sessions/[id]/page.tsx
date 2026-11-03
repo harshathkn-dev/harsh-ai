@@ -6,8 +6,10 @@ import {
   EmptyState,
   StatusBadge,
 } from "@/components/dashboard/ui";
+import { VoiceAiPanel } from "@/components/realtime/voice-ai-panel";
 import { SessionControls } from "@/components/sessions/session-controls";
 import { requireAuthenticatedUser } from "@/lib/auth/user";
+import { isRealtimeVoice } from "@/lib/realtime/types";
 import type { SessionStatus } from "@/lib/sessions/types";
 
 type SessionDetailPageProps = {
@@ -25,7 +27,7 @@ function dateTime(value: string | null) {
 export default async function SessionDetailPage({
   params,
 }: SessionDetailPageProps) {
-  const [{ id }, { supabase }] = await Promise.all([
+  const [{ id }, { supabase, userId }] = await Promise.all([
     params,
     requireAuthenticatedUser(),
   ]);
@@ -41,27 +43,43 @@ export default async function SessionDetailPage({
     notFound();
   }
 
-  const [messagesResult, transcriptsResult, notesResult] = await Promise.all([
-    supabase
-      .from("session_messages")
-      .select("id, role, content, model, created_at")
-      .eq("session_id", id)
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("transcripts")
-      .select(
-        "id, transcript_text, language, duration_seconds, status, created_at",
-      )
-      .eq("session_id", id)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("ai_notes")
-      .select("id, note_type, title, content, model, created_at")
-      .eq("session_id", id)
-      .order("created_at", { ascending: false }),
-  ]);
+  const [messagesResult, transcriptsResult, notesResult, settingsResult] =
+    await Promise.all([
+      supabase
+        .from("session_messages")
+        .select("id, role, content, model, created_at")
+        .eq("session_id", id)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("transcripts")
+        .select(
+          "id, transcript_text, language, duration_seconds, status, created_at",
+        )
+        .eq("session_id", id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("ai_notes")
+        .select("id, note_type, title, content, model, created_at")
+        .eq("session_id", id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("user_settings")
+        .select("ai_preferences")
+        .eq("user_id", userId)
+        .maybeSingle(),
+    ]);
   const contentError =
     messagesResult.error || transcriptsResult.error || notesResult.error;
+  const preferences = settingsResult.data?.ai_preferences;
+  const voiceCandidate =
+    preferences &&
+    typeof preferences === "object" &&
+    "realtime_voice" in preferences
+      ? preferences.realtime_voice
+      : null;
+  const initialVoice = isRealtimeVoice(voiceCandidate)
+    ? voiceCandidate
+    : "marin";
 
   return (
     <>
@@ -121,6 +139,14 @@ export default async function SessionDetailPage({
           </p>
         </article>
       </section>
+
+      {session.status === "draft" || session.status === "active" ? (
+        <VoiceAiPanel
+          initialVoice={initialVoice}
+          sessionId={session.id}
+          sessionStatus={session.status}
+        />
+      ) : null}
 
       <div className="mt-8 grid gap-6 xl:grid-cols-[1.3fr_1fr]">
         <section className="card rounded-2xl p-5 sm:p-6">
