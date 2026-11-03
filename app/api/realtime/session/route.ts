@@ -186,14 +186,26 @@ export async function POST(request: Request) {
     .single();
 
   if (connectionError || !connection) {
+    // Keep provider/database details in server logs only; never return secrets
+    // or raw database diagnostics to the browser.
+    console.error("Realtime connection record insert failed", {
+      code: connectionError?.code ?? "NO_CONNECTION_ROW",
+      message: connectionError?.message ?? "Insert returned no row",
+      details: connectionError?.details,
+      hint: connectionError?.hint,
+      sessionId: session.id,
+      userId: auth.userId,
+    });
     return errorResponse(
       connectionError?.code === "23505" ? 409 : 500,
       connectionError?.code === "23505"
         ? "SESSION_ALREADY_CONNECTED"
-        : "CONNECTION_RECORD_FAILED",
+        : connectionError?.code
+          ? `CONNECTION_RECORD_FAILED_${connectionError.code}`
+          : "CONNECTION_RECORD_FAILED",
       connectionError?.code === "23505"
         ? "This session already has an active Voice AI connection."
-        : "The Voice AI connection could not be initialized.",
+        : "The Voice AI connection could not be initialized. Check server logs for the diagnostic details.",
     );
   }
 
