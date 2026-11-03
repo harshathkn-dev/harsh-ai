@@ -368,9 +368,14 @@ export function VoiceAiPanel({
       }).catch(() => null);
 
       if (!startResponse?.ok) {
+        const startBody = await startResponse?.json().catch(() => null);
         closeMedia();
         setState("error");
-        setError("The session could not be started for Voice AI.");
+        setError(
+          typeof startBody?.error === "string"
+            ? `Could not start session: ${startBody.error}`
+            : `Could not start session (HTTP ${startResponse?.status ?? "network error"}).`,
+        );
         return;
       }
     }
