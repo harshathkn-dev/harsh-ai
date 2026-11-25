@@ -513,7 +513,28 @@ export function VoiceAiPanel({
       );
 
       if (!sdpResponse.ok) {
-        throw new Error(`OpenAI WebRTC negotiation failed (${sdpResponse.status}).`);
+        const providerBody = await sdpResponse.text().catch(() => "");
+        let providerMessage = "";
+        let providerCode = "";
+        try {
+          const parsed = JSON.parse(providerBody) as {
+            error?: { message?: unknown; code?: unknown; type?: unknown };
+          };
+          if (typeof parsed.error?.message === "string") {
+            providerMessage = parsed.error.message;
+          }
+          if (typeof parsed.error?.code === "string") {
+            providerCode = parsed.error.code;
+          } else if (typeof parsed.error?.type === "string") {
+            providerCode = parsed.error.type;
+          }
+        } catch {
+          // Some provider failures return a non-JSON response body.
+        }
+        const detail = [providerCode, providerMessage].filter(Boolean).join(": ");
+        throw new Error(
+          `OpenAI WebRTC negotiation failed (${sdpResponse.status})${detail ? `: ${detail}` : "."}`,
+        );
       }
 
       await peer.setRemoteDescription({
