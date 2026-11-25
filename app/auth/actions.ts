@@ -22,8 +22,10 @@ async function applicationOrigin(): Promise<string> {
     return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
   }
 
+  // Prefer the stable production hostname so preview deployments do not
+  // generate OAuth/email callbacks to one-off deployment URLs.
   const vercelHost =
-    process.env.VERCEL_URL ?? process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
 
   if (vercelHost) {
     return `https://${vercelHost.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
