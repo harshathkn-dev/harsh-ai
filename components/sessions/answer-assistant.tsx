@@ -20,12 +20,36 @@ export function AnswerAssistant({
   const [answer, setAnswer] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [demoMode, setDemoMode] = useState(true);
+
+  function createDemoAnswer(prompt: string) {
+    return [
+      "DEMO RESPONSE — sample content, not AI-generated",
+      "",
+      `Question received: ${prompt.trim()}`,
+      "",
+      "A clear way to answer is to start with the direct point, explain the approach you would take, and finish with a practical example.",
+      "",
+      "Suggested structure:",
+      "1. Give a concise answer to the question.",
+      "2. Explain the key steps, tools, or trade-offs involved.",
+      "3. Add a real example from your own experience.",
+      "4. Close with the result or lesson learned.",
+      "",
+      "This demo verifies the answer panel and copy interaction only. Enable Live AI after configuring API billing to receive a genuinely generated answer.",
+    ].join("\\n");
+  }
 
   async function generateAnswer() {
     if (!question.trim() || loading) return;
     setLoading(true);
     setError("");
     setAnswer("");
+    if (demoMode) {
+      setAnswer(createDemoAnswer(question));
+      setLoading(false);
+      return;
+    }
     const response = await fetch("/api/answer-assistant", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -62,11 +86,24 @@ export function AnswerAssistant({
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Interview Copilot</p>
                 <h2 className="mt-2 text-xl font-black" id="answer-assistant-title">Suggested answer</h2>
-                <p className="mt-1 text-sm text-slate-400">Ask a question and get a response grounded in your session context.</p>
+                <p className="mt-1 text-sm text-slate-400">Test the answer panel free, or switch to Live AI when API billing is enabled.</p>
               </div>
               <button aria-label="Close answer assistant" className="rounded-lg px-3 py-2 text-slate-400 hover:bg-white/10" onClick={() => setOpen(false)} type="button">✕</button>
             </header>
             <div className="space-y-4 overflow-y-auto p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                <div>
+                  <p className="text-sm font-bold">{demoMode ? "Free demo mode" : "Live AI mode"}</p>
+                  <p className="mt-1 text-xs text-slate-400">{demoMode ? "No API call or billing. Uses a sample response." : "Uses your configured OpenAI API and may incur usage charges."}</p>
+                </div>
+                <button
+                  className="rounded-lg border border-white/15 px-3 py-2 text-xs font-bold hover:bg-white/10"
+                  onClick={() => { setDemoMode((current) => !current); setAnswer(""); setError(""); }}
+                  type="button"
+                >
+                  Switch to {demoMode ? "Live AI" : "Free demo"}
+                </button>
+              </div>
               <label className="block text-sm font-semibold">
                 Interview question
                 <textarea className="field mt-2 min-h-28 w-full resize-y" onChange={(event) => setQuestion(event.target.value)} placeholder="Paste or type the question here…" value={question} />
