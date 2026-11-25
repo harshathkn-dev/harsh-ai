@@ -47,13 +47,13 @@ function upsertMessage(
 
 function microphoneError(error: unknown) {
   if (error instanceof DOMException && error.name === "NotAllowedError") {
-    return "Microphone permission was denied. Allow microphone access in the browser and try again.";
+    return "Audio sharing permission was denied. Allow tab or screen audio sharing in the browser and try again.";
   }
   if (error instanceof DOMException && error.name === "NotFoundError") {
-    return "No microphone was detected.";
+    return "No shared audio source was detected.";
   }
   if (error instanceof DOMException && error.name === "NotReadableError") {
-    return "The microphone is already in use or unavailable.";
+    return "The shared audio source is unavailable.";
   }
   return "The shared audio could not be started.";
 }
@@ -245,7 +245,7 @@ export function VoiceAiPanel({
       type === "response.output_text.done" &&
       itemId
     ) {
-      const transcript = stringValue(rawEvent.transcript)?.trim();
+      const transcript = stringValue(rawEvent.text)?.trim();
       if (transcript) {
         const message: LiveTranscriptMessage = {
           providerItemId: itemId,
@@ -325,11 +325,11 @@ export function VoiceAiPanel({
 
     if (
       typeof RTCPeerConnection === "undefined" ||
-      !navigator.mediaDevices?.getUserMedia
+      !navigator.mediaDevices?.getDisplayMedia
     ) {
       setState("error");
       setError(
-        "This browser does not support the WebRTC microphone features required by Voice AI.",
+        "This browser does not support the screen/tab audio capture required by Voice AI.",
       );
       return;
     }
@@ -452,7 +452,7 @@ export function VoiceAiPanel({
     try {
       const peer = new RTCPeerConnection();
       peerRef.current = peer;
-      microphone
+      capture
         .getAudioTracks()
         .forEach((track) => peer.addTrack(track, capture));
 
@@ -586,7 +586,7 @@ export function VoiceAiPanel({
         listening: "Listening",
         processing: "Processing",
         speaking: "AI preparing answer",
-        muted: "Microphone muted",
+        muted: "Shared audio muted",
         error: "Error",
       }[state];
 
