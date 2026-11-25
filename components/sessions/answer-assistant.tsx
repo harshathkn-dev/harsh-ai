@@ -37,7 +37,7 @@ export function AnswerAssistant({
       "4. Close with the result or lesson learned.",
       "",
       "This demo verifies the answer panel and copy interaction only. Enable Live AI after configuring API billing to receive a genuinely generated answer.",
-    ].join("\\n");
+    ].join("\n");
   }
 
   async function generateAnswer() {
