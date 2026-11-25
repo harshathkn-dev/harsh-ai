@@ -55,7 +55,7 @@ function microphoneError(error: unknown) {
   if (error instanceof DOMException && error.name === "NotReadableError") {
     return "The microphone is already in use or unavailable.";
   }
-  return "The microphone could not be started.";
+  return "The shared audio could not be started.";
 }
 
 export function VoiceAiPanel({
@@ -342,23 +342,42 @@ export function VoiceAiPanel({
     setState("connecting");
     endingRef.current = false;
 
-    let microphone: MediaStream;
+    let capture: MediaStream;
     try {
-      microphone = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
+      // The browser picker lets the user share a Chrome tab (including tab audio)
+      // or the entire screen/system audio where the browser and OS support it.
+      capture = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: 1 },
+        audio: true,
       });
-    } catch (permissionError) {
+    } catch (captureError) {
       setState("error");
-      setError(microphoneError(permissionError));
+      setError(
+        captureError instanceof DOMException && captureError.name === "NotAllowedError"
+          ? "Audio sharing was cancelled. Share the interview tab and enable Share tab audio."
+          : "Could not capture tab/system audio. Use Chrome or Edge and select a tab with audio sharing enabled.",
+      );
       return;
     }
 
-    streamRef.current = microphone;
-    setStream(microphone);
+    const audioTracks = capture.getAudioTracks();
+    if (audioTracks.length === 0) {
+      capture.getTracks().forEach((track) => track.stop());
+      setState("error");
+      setError("No shared audio was detected. In the browser picker, select the interview tab and enable Share tab audio, or share your screen with system audio.");
+      return;
+    }
+
+    streamRef.current = capture;
+    setStream(capture);
+    audioTracks.forEach((track) => {
+      track.enabled = true;
+      track.onended = () => {
+        if (!endingRef.current) {
+          void failConnection("The shared audio source stopped. Start sharing the interview tab again.", "shared_audio_ended");
+        }
+      };
+    });
 
     if (sessionStatus === "draft") {
       const startResponse = await fetch(`/api/sessions/${sessionId}`, {
@@ -440,7 +459,7 @@ export function VoiceAiPanel({
       peerRef.current = peer;
       microphone
         .getAudioTracks()
-        .forEach((track) => peer.addTrack(track, microphone));
+        .forEach((track) => peer.addTrack(track, capture));
 
       peer.ontrack = (event) => {
         if (remoteAudioRef.current) {
@@ -583,7 +602,7 @@ export function VoiceAiPanel({
         connected: "Connected",
         listening: "Listening",
         processing: "Processing",
-        speaking: "AI speaking",
+        speaking: "AI preparing answer",
         muted: "Microphone muted",
         error: "Error",
       }[state];
@@ -608,33 +627,16 @@ export function VoiceAiPanel({
                 {stateLabel}
               </p>
             </div>
-            <h2 className="mt-2 text-xl font-black">Realtime Voice AI</h2>
+            <h2 className="mt-2 text-xl font-black">Live Interview Copilot</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Live speech-to-speech audio over WebRTC. Audio is not recorded.
+              Share the interview tab or system audio. AI suggestions appear silently as text; audio is not recorded.
             </p>
           </div>
 
           <div className="flex flex-wrap items-end gap-2">
-            <label className="text-xs font-bold text-slate-400">
-              Voice
-              <select
-                className="field mt-1 min-w-32 py-2"
-                disabled={connected}
-                onChange={(event) =>
-                  setVoice(event.target.value as RealtimeVoice)
-                }
-                value={voice}
-              >
-                {REALTIME_VOICES.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
             {!connected ? (
               <button className="button" onClick={startVoice} type="button">
-                Start Voice AI
+                Start listening
               </button>
             ) : (
               <>
@@ -643,7 +645,7 @@ export function VoiceAiPanel({
                   onClick={toggleMute}
                   type="button"
                 >
-                  {muted ? "Unmute microphone" : "Mute microphone"}
+                  {muted ? "Unmute shared audio" : "Mute shared audio"}
                 </button>
                 <button
                   className="button button-secondary"
@@ -651,14 +653,14 @@ export function VoiceAiPanel({
                   onClick={interrupt}
                   type="button"
                 >
-                  Interrupt AI
+                  Clear current response
                 </button>
                 <button
                   className="rounded-xl bg-red-400 px-4 py-3 text-sm font-black text-red-950"
                   onClick={endVoice}
                   type="button"
                 >
-                  End Voice AI
+                  Stop listening
                 </button>
               </>
             )}
@@ -670,7 +672,7 @@ export function VoiceAiPanel({
             <AudioWaveform muted={muted} stream={stream} />
           </div>
           <label className="text-xs font-bold text-slate-400">
-            Speaker volume {Math.round(volume * 100)}%
+            
             <input
               aria-label="Speaker volume"
               className="mt-3 w-full accent-emerald-300"
