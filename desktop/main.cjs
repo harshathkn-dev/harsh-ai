@@ -2,7 +2,7 @@ const { app, BrowserWindow, desktopCapturer, session, shell } = require("electro
 
 const APP_URL =
   process.env.HARSH_AI_URL ||
-  "https://harsh-ai-git-main-harsh-s-dev.vercel.app";
+  "https://harshathkn-dev-harsh-ai.vercel.app";
 
 let mainWindow;
 
