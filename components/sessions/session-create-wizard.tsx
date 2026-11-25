@@ -50,17 +50,17 @@ export function SessionCreateWizard({ busy, onClose, onCreate }: WizardProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 sm:p-6" onClick={onClose}>
-      <section aria-modal="true" className="card grid max-h-[94vh] w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 md:grid-cols-[260px_1fr]" onClick={(event) => event.stopPropagation()} role="dialog">
-        <aside className="border-b border-white/10 bg-white/[0.02] p-5 md:border-b-0 md:border-r md:p-8">
+      <section aria-modal="true" className="card grid h-[94dvh] max-h-[94dvh] w-full max-w-5xl grid-rows-[minmax(0,1fr)] overflow-hidden rounded-3xl border border-white/10 md:grid-cols-[260px_minmax(0,1fr)]" onClick={(event) => event.stopPropagation()} role="dialog">
+        <aside className="min-h-0 overflow-y-auto overscroll-contain border-b border-white/10 bg-white/[0.02] p-5 md:border-b-0 md:border-r md:p-8">
           <h2 className="text-xl font-black">Create session</h2>
           <p className="mt-2 text-sm leading-6 text-slate-400">Enter the details and choose what you need for this call.</p>
           <div className="mt-8 space-y-5 text-sm">
             {[["1", "Details"], ["2", "Preferences"]].map(([number, label], index) => <div className="flex items-center gap-3" key={number}><span className={step === index + 1 ? "grid size-8 place-items-center rounded-full bg-emerald-300 font-bold text-slate-950" : "grid size-8 place-items-center rounded-full border border-white/20 text-slate-400"}>{number}</span><span className={step === index + 1 ? "font-bold text-white" : "text-slate-400"}>{label}</span></div>)}
           </div>
         </aside>
-        <div className="flex min-h-0 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-col">
           <header className="flex items-center justify-between border-b border-white/10 px-5 py-4 sm:px-8"><p className="font-bold">{step === 1 ? "Session details" : "Answer preferences"}</p><button aria-label="Close" className="rounded-lg px-3 py-2 text-slate-400 hover:bg-white/10" onClick={onClose} type="button">✕</button></header>
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-8">
+          <div className="min-h-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto overscroll-contain p-5 sm:p-8">
             {step === 1 ? <>
               <div><label className="mb-2 block text-sm font-semibold">Session type</label><div className="grid grid-cols-3 gap-2 rounded-2xl bg-white/[0.06] p-1">{[["interview","▣ Interview"],["meeting","◉ Regular"],["general","♧ Mock"]].map(([value,label]) => <button className={sessionType === value ? "rounded-xl bg-white px-2 py-3 text-sm font-bold text-slate-950 shadow" : "rounded-xl px-2 py-3 text-sm font-semibold text-slate-300"} key={value} onClick={() => setSessionType(value as typeof sessionType)} type="button">{label}</button>)}</div></div>
               {sessionType === "interview" ? <div className="rounded-xl border border-white/10 p-4"><p className="text-sm text-slate-400">Have a link to the job post? Import details automatically.</p><div className="mt-3 flex gap-2"><input className="field min-w-0 flex-1" onChange={(e) => setJobUrl(e.target.value)} placeholder="Paste job post URL" type="url" value={jobUrl}/><button className="button button-secondary" onClick={importJob} type="button">Import link</button></div>{importError ? <p className="mt-2 text-sm text-red-300">{importError}</p> : null}</div> : null}
@@ -76,7 +76,7 @@ export function SessionCreateWizard({ busy, onClose, onCreate }: WizardProps) {
               <label className="flex items-center gap-3 text-sm"><input checked={preferences.includeExamples} onChange={(e)=>setPreferences((p)=>({...p,includeExamples:e.target.checked}))} type="checkbox"/>Include practical examples</label>
             </>}
           </div>
-          <footer className="flex justify-end gap-3 border-t border-white/10 p-5 sm:px-8"><button className="button button-secondary" onClick={step === 1 ? onClose : () => setStep(1)} type="button">{step === 1 ? "Cancel" : "Back"}</button>{step === 1 ? <button className="button" onClick={() => setStep(2)} type="button">Next</button> : <button className="button" disabled={busy} onClick={submit} type="button">{busy ? "Creating…" : "Create session"}</button>}</footer>
+          <footer className="flex shrink-0 justify-end gap-3 border-t border-white/10 bg-slate-900/95 p-5 sm:px-8"><button className="button button-secondary" onClick={step === 1 ? onClose : () => setStep(1)} type="button">{step === 1 ? "Cancel" : "Back"}</button>{step === 1 ? <button className="button" onClick={() => setStep(2)} type="button">Next</button> : <button className="button" disabled={busy} onClick={submit} type="button">{busy ? "Creating…" : "Create session"}</button>}</footer>
         </div>
       </section>
     </div>
