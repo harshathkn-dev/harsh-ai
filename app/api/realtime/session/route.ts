@@ -30,7 +30,7 @@ function instructionsFor(type: string, title: string) {
         ? "Act as a concise meeting copilot. Help clarify ideas, decisions, and next actions without dominating the conversation."
         : "Act as a helpful conversational assistant. Be accurate, natural, and concise.";
 
-  return `${purpose} This live conversation belongs to the session "${title}". Speak naturally. Do not claim to have performed actions you cannot perform.`;
+  return `${purpose} This live conversation belongs to the session "${title}". Return concise, useful interview-answer suggestions as text only. Never speak audio. Do not claim to have performed actions you cannot perform.`;
 }
 
 function errorResponse(status: number, code: string, message: string) {
@@ -226,7 +226,7 @@ export async function POST(request: Request) {
         session: {
           type: "realtime",
           model: config.model,
-          output_modalities: ["audio"],
+          output_modalities: ["text"],
           instructions: instructionsFor(session.session_type, session.title),
           max_output_tokens: 1200,
           audio: {
@@ -240,7 +240,6 @@ export async function POST(request: Request) {
                 interrupt_response: true,
               },
             },
-            output: { voice },
           },
         },
       }),
