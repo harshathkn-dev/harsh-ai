@@ -69,14 +69,12 @@ export function VoiceAiPanel({
   const streamRef = useRef<MediaStream | null>(null);
   const connectionIdRef = useRef<string | null>(null);
   const endingRef = useRef(false);
-  const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const messagesRef = useRef<LiveTranscriptMessage[]>([]);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [state, setState] =
     useState<VoiceConnectionState>("disconnected");
   const [voice, setVoice] = useState<RealtimeVoice>(initialVoice);
   const [muted, setMuted] = useState(false);
-  const [volume, setVolume] = useState(1);
   const [messages, setMessages] = useState<LiveTranscriptMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [persistenceWarning, setPersistenceWarning] = useState<string | null>(
@@ -101,9 +99,6 @@ export function VoiceAiPanel({
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     setStream(null);
-    if (remoteAudioRef.current) {
-      remoteAudioRef.current.srcObject = null;
-    }
   }
 
   async function reportEnded(errorCode?: string) {
@@ -191,7 +186,7 @@ export function VoiceAiPanel({
       type === "conversation.item.input_audio_transcription.completed" &&
       itemId
     ) {
-      const transcript = stringValue(rawEvent.transcript)?.trim();
+      const transcript = stringValue(rawEvent.text)?.trim();
       if (transcript) {
         const message: LiveTranscriptMessage = {
           providerItemId: itemId,
@@ -224,7 +219,7 @@ export function VoiceAiPanel({
     }
 
     if (
-      type === "response.output_audio_transcript.delta" &&
+      type === "response.output_text.delta" &&
       itemId
     ) {
       const delta = stringValue(rawEvent.delta);
@@ -247,7 +242,7 @@ export function VoiceAiPanel({
     }
 
     if (
-      type === "response.output_audio_transcript.done" &&
+      type === "response.output_text.done" &&
       itemId
     ) {
       const transcript = stringValue(rawEvent.transcript)?.trim();
@@ -461,13 +456,6 @@ export function VoiceAiPanel({
         .getAudioTracks()
         .forEach((track) => peer.addTrack(track, capture));
 
-      peer.ontrack = (event) => {
-        if (remoteAudioRef.current) {
-          remoteAudioRef.current.srcObject = event.streams[0];
-          remoteAudioRef.current.volume = volume;
-          void remoteAudioRef.current.play().catch(() => null);
-        }
-      };
 
       peer.onconnectionstatechange = () => {
         if (
@@ -566,14 +554,9 @@ export function VoiceAiPanel({
     const channel = channelRef.current;
     if (!channel || channel.readyState !== "open") return;
     channel.send(JSON.stringify({ type: "response.cancel" }));
-    channel.send(JSON.stringify({ type: "output_audio_buffer.clear" }));
+    
     setState(muted ? "muted" : "listening");
   }
-
-  useEffect(() => {
-    const audio = remoteAudioRef.current;
-    if (audio) audio.volume = volume;
-  }, [volume]);
 
   useEffect(
     () => () => {
@@ -595,7 +578,7 @@ export function VoiceAiPanel({
 
   const connected = !["disconnected", "error"].includes(state);
   const stateLabel = muted
-    ? "Microphone muted"
+    ? "Shared audio muted"
     : {
         disconnected: "Disconnected",
         connecting: "Connecting",
@@ -609,7 +592,6 @@ export function VoiceAiPanel({
 
   return (
     <section className="card mt-8 overflow-hidden rounded-2xl">
-      <audio autoPlay ref={remoteAudioRef} />
       <div className="border-b border-white/10 p-5 sm:p-6">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
           <div>
@@ -667,23 +649,8 @@ export function VoiceAiPanel({
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-[1fr_220px] md:items-center">
-          <div className="rounded-xl border border-white/10 bg-black/15 px-3">
-            <AudioWaveform muted={muted} stream={stream} />
-          </div>
-          <label className="text-xs font-bold text-slate-400">
-            
-            <input
-              aria-label="Speaker volume"
-              className="mt-3 w-full accent-emerald-300"
-              max="1"
-              min="0"
-              onChange={(event) => setVolume(Number(event.target.value))}
-              step="0.05"
-              type="range"
-              value={volume}
-            />
-          </label>
+        <div className="mt-5 rounded-xl border border-white/10 bg-black/15 px-3">
+          <AudioWaveform muted={muted} stream={stream} />
         </div>
 
         {error ? (
