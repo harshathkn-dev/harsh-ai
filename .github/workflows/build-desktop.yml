@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "desktop/**"
+      - ".github/workflows/build-desktop.yml"
 
 permissions:
   contents: read
